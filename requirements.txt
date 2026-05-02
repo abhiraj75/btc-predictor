@@ -1,8 +1,8 @@
-numpy
-pandas
-scipy
-arch
-requests
-streamlit
-plotly
-tqdm
+numpy==2.4.4
+pandas==3.0.2
+scipy==1.17.1
+arch==8.0.0
+requests==2.33.1
+streamlit==1.57.0
+plotly==6.7.0
+tqdm==4.67.3

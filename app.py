@@ -98,7 +98,7 @@ def load_backtest_metrics():
     }
 
 # ── Live prediction ──
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=30)
 def get_prediction():
     df = fetch_btc_klines(limit=500)
     prices = pd.Series(df["close"].values, dtype=float)

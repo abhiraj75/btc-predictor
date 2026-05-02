@@ -7,7 +7,8 @@
 - **Cyber GBM** (Geometric Brownian Motion) with adaptive volatility
 - **FIGARCH** volatility estimation (with GARCH(1,1) fallback)
 - **Student-t** distributed shocks for fat tails
-- **Rolling entropy + momentum** features for volatility clustering
+- **Mean-reverted FIGARCH variance** for volatility clustering
+- **0.96 volatility calibration scale** selected on a pre-test calibration window
 - **10,000** Monte Carlo simulations per prediction
 
 ## Project Structure
@@ -58,7 +59,9 @@ The Streamlit dashboard shows:
 - Candlestick chart of last 50 bars with shaded prediction band
 - Prediction history with hit/miss tracking (Part C)
 
-Deployment URL: add the public Streamlit/HuggingFace/etc. URL here before submitting the form.
+Deployment URL: pending. Add the public Streamlit/HuggingFace/etc. URL here before submitting the form.
+
+Part C persistence uses local JSON storage through `load_history()` / `save_prediction()`. This works locally and keeps the storage interface simple, but hosted platforms may reset local files after app sleep, restart, or redeploy. For production, the same interface can be backed by external storage such as Supabase, S3, a small database, or a GitHub Gist.
 
 ## Data Source
 
