@@ -15,7 +15,7 @@ Predict Bitcoin's next-hour price range using Monte Carlo simulation.
 
 | File | Description |
 |------|-------------|
-| `model.py` | Core model: data fetching, feature engineering, GBM simulation |
+| `model.py` | Core model: data fetching, volatility estimation, GBM simulation |
 | `backtest.py` | 30-day rolling backtest (720 hourly predictions) |
 | `app.py` | Live Streamlit dashboard with prediction persistence |
 | `backtest_results.jsonl` | Backtest output (one prediction per line) |
@@ -44,9 +44,9 @@ Current saved `backtest_results.jsonl` metrics:
 
 | Metric | Value |
 |--------|-------|
-| `coverage_95` | `0.9514` |
-| `mean_width` | `$1,188` |
-| `mean_winkler_95` | `$1,681` |
+| `coverage_95` | `0.9513888889` |
+| `mean_width` | `$1,188.3203891551` |
+| `mean_winkler_95` | `$1,680.9890754666` |
 | Predictions | `720` |
 | Backtest window | `2026-04-02 17:00 UTC` to `2026-05-02 16:00 UTC` |
 | Volatility scale | `0.96` |
@@ -61,7 +61,7 @@ The dashboard shows:
 - Candlestick chart of last 50 bars with shaded prediction band
 - Prediction history with hit/miss tracking
 
-Persistence uses local JSON storage through `load_history()` / `save_prediction()`. On hosted platforms, local files may reset after app sleep or redeploy. The storage interface is abstracted for easy swap to external backends (Supabase, S3, GitHub Gist, etc.).
+Persistence uses local JSON storage through isolated `load_history()` / `save_prediction()` functions. On hosted platforms, local files may reset after app sleep or redeploy. The storage code is intentionally small so it can be swapped to an external backend (Supabase, S3, GitHub Gist, etc.).
 
 ## Data Source
 
