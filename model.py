@@ -1,9 +1,8 @@
 """
-model.py — Cyber GBM Monte Carlo Simulator for BTCUSDT (1-hour bars)
+model.py — GBM Monte Carlo Simulator for BTCUSDT (1-hour bars)
 
-Adapted from the AlphaI starter Colab notebook.
-Uses FIGARCH volatility + Student-t fat tails + entropy/momentum features
-to produce 95% prediction intervals for Bitcoin's next-hour close price.
+Uses FIGARCH volatility + Student-t fat tails to produce 95% prediction
+intervals for Bitcoin's next-hour close price.
 """
 
 import numpy as np

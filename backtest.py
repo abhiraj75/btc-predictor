@@ -2,7 +2,7 @@
 backtest.py — Part A: 30-day rolling backtest
 
 Fetches ~820+ BTCUSDT 1h bars (720 test + 100 warm-up),
-runs the Cyber GBM model at each step without peeking at future data,
+runs the GBM model at each step without peeking at future data,
 and writes backtest_results.jsonl.
 """
 

@@ -1,11 +1,11 @@
 # ₿ BTC Next-Hour Predictor
 
-**AlphaI × Polaris Challenge** — Predict Bitcoin's next-hour price range using Monte Carlo simulation.
+Predict Bitcoin's next-hour price range using Monte Carlo simulation.
 
 ## Model
 
-- **Cyber GBM** (Geometric Brownian Motion) with adaptive volatility
-- **FIGARCH** volatility estimation (with GARCH(1,1) fallback)
+- **GBM** (Geometric Brownian Motion) with FIGARCH conditional volatility
+- **FIGARCH(1,1)** volatility estimation (with GARCH(1,1) fallback)
 - **Student-t** distributed shocks for fat tails
 - **Mean-reverted FIGARCH variance** for volatility clustering
 - **0.96 volatility calibration scale** selected on a pre-test calibration window
@@ -15,53 +15,53 @@
 
 | File | Description |
 |------|-------------|
-| `model.py` | Core model — data fetching, features, GBM simulation |
-| `backtest.py` | Part A — 30-day rolling backtest (720 predictions) |
-| `app.py` | Part B+C — Live Streamlit dashboard with persistence |
+| `model.py` | Core model: data fetching, feature engineering, GBM simulation |
+| `backtest.py` | 30-day rolling backtest (720 hourly predictions) |
+| `app.py` | Live Streamlit dashboard with prediction persistence |
 | `backtest_results.jsonl` | Backtest output (one prediction per line) |
-| `requirements.txt` | Python dependencies |
+| `requirements.txt` | Pinned Python dependencies |
 
 ## Quick Start
 
 ```bash
 pip install -r requirements.txt
 
-# Run the 30-day backtest (Part A)
+# Run the 30-day backtest
 python backtest.py
 
-# Launch the dashboard (Part B)
+# Launch the dashboard
 streamlit run app.py
 ```
 
-## Backtest Metrics (Part A)
+## Backtest Metrics
 
 Run `python backtest.py` to generate `backtest_results.jsonl` and print:
-- **Coverage** — fraction of predictions containing the actual price (target: ~0.95)
-- **Mean Width** — average prediction range width (narrower = better)
-- **Winkler Score** — combined accuracy + tightness metric (lower = better)
+- **Coverage** : fraction of predictions containing the actual price (target: ~0.95)
+- **Mean Width** : average prediction range width (narrower = better)
+- **Winkler Score** : combined accuracy + tightness metric (lower = better)
 
 Current saved `backtest_results.jsonl` metrics:
 
 | Metric | Value |
 |--------|-------|
-| `coverage_95` | `0.9513888889` |
-| `mean_width` | `1188.3203891551` |
-| `mean_winkler_95` | `1680.9890754666` |
+| `coverage_95` | `0.9514` |
+| `mean_width` | `$1,188` |
+| `mean_winkler_95` | `$1,681` |
 | Predictions | `720` |
 | Backtest window | `2026-04-02 17:00 UTC` to `2026-05-02 16:00 UTC` |
 | Volatility scale | `0.96` |
 
-## Dashboard (Part B)
+## Live Dashboard
 
-The Streamlit dashboard shows:
+**URL**: [btc-predictor-abhiraj.streamlit.app](https://btc-predictor-abhiraj.streamlit.app/)
+
+The dashboard shows:
 - Backtest metrics as headline cards
 - Current BTC price + 95% prediction range for the next hour
 - Candlestick chart of last 50 bars with shaded prediction band
-- Prediction history with hit/miss tracking (Part C)
+- Prediction history with hit/miss tracking
 
-Deployment URL: pending. Add the public Streamlit/HuggingFace/etc. URL here before submitting the form.
-
-Part C persistence uses local JSON storage through `load_history()` / `save_prediction()`. This works locally and keeps the storage interface simple, but hosted platforms may reset local files after app sleep, restart, or redeploy. For production, the same interface can be backed by external storage such as Supabase, S3, a small database, or a GitHub Gist.
+Persistence uses local JSON storage through `load_history()` / `save_prediction()`. On hosted platforms, local files may reset after app sleep or redeploy. The storage interface is abstracted for easy swap to external backends (Supabase, S3, GitHub Gist, etc.).
 
 ## Data Source
 
