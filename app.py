@@ -249,7 +249,7 @@ if resolved or pending:
                 })
             st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
         else:
-            st.info("No resolved predictions yet — check back after the next hourly close.")
+            st.info("No resolved predictions yet, check back after the next hourly close.")
 
     with tab2:
         if pending:
