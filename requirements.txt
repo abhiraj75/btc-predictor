@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy
+arch
+requests
+streamlit
+plotly
+tqdm
