@@ -12,10 +12,7 @@ import scipy.stats as stats
 from arch import arch_model
 from datetime import datetime, timezone
 
-
-# ────────────────────────────────────────────────────────────────
 # 1. DATA FETCHING
-# ────────────────────────────────────────────────────────────────
 
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 DEFAULT_VOLATILITY_SCALE = 0.96
@@ -67,10 +64,7 @@ def fetch_btc_klines(limit: int = 500, end_time_ms: int | None = None) -> pd.Dat
     df = df.tail(requested_limit).reset_index(drop=True)
     return df
 
-
-# ────────────────────────────────────────────────────────────────
 # 2. FEATURE ENGINEERING
-# ────────────────────────────────────────────────────────────────
 
 def rolling_entropy(x: pd.Series, window: int = 60, bins: int = 20) -> pd.Series:
     """Shannon entropy of binned values over a rolling window."""
@@ -144,10 +138,7 @@ def compute_features(prices: pd.Series, log_ret: pd.Series):
         "base_params": base_params,
     }
 
-
-# ────────────────────────────────────────────────────────────────
 # 3. SIMULATION ENGINE (vectorised — ~100x faster than loop)
-# ────────────────────────────────────────────────────────────────
 
 def _compute_sigma2(sigma_fig: pd.Series, H: pd.Series, M: pd.Series,
                     params: dict, bar_sigma2: float,
@@ -193,10 +184,7 @@ def simulate_mc(
 
     return terminals
 
-
-# ────────────────────────────────────────────────────────────────
 # 4. PREDICTION INTERFACE
-# ────────────────────────────────────────────────────────────────
 
 def predict_range(
     prices: pd.Series, n_sims: int = 10_000, alpha: float = 0.05,

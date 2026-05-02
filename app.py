@@ -14,10 +14,10 @@ import streamlit as st
 
 from model import fetch_btc_klines, predict_range
 
-# ── Page config ──
+# Page config
 st.set_page_config(page_title="BTC Predictor", page_icon="₿", layout="wide")
 
-# ── Minimal CSS — just enough to not look like default Streamlit ──
+# Minimal CSS — just enough to not look like default Streamlit ──
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; max-width: 1100px; }
@@ -40,7 +40,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Persistence (Part C) ──
+# Persistence (Part C)
 HISTORY_FILE = "predictions_history.json"
 
 def load_history():
@@ -70,7 +70,7 @@ def update_actuals(history, df):
             h["hit"] = h["lower"] <= h["actual"] <= h["upper"]
     return history
 
-# ── Load backtest metrics ──
+# Load backtest metrics
 @st.cache_data(ttl=3600)
 def load_backtest_metrics():
     path = Path("backtest_results.jsonl")
@@ -97,7 +97,7 @@ def load_backtest_metrics():
         "n": len(preds),
     }
 
-# ── Live prediction ──
+# Live prediction 
 @st.cache_data(ttl=30)
 def get_prediction():
     df = fetch_btc_klines(limit=500)
@@ -108,14 +108,12 @@ def get_prediction():
     pred["timestamp"] = datetime.now(timezone.utc).isoformat()
     return df, pred
 
-# ────────────────────────────────────────────────
 # MAIN
-# ────────────────────────────────────────────────
 
 st.title("₿ BTC Next-Hour Predictor")
 st.caption("GBM Monte Carlo · FIGARCH volatility · Student-t fat tails · 10K simulations")
 
-# ── Backtest metrics ──
+# Backtest metrics 
 metrics = load_backtest_metrics()
 if metrics:
     c1, c2, c3, c4 = st.columns(4)
@@ -144,7 +142,7 @@ if metrics:
 
 st.divider()
 
-# ── Live prediction ──
+# Live prediction 
 with st.spinner("Fetching live data & running simulations..."):
     df, pred = get_prediction()
 
@@ -167,7 +165,7 @@ with col_pred:
         <div style="color:#666; font-size:0.8rem; margin-top:4px;">Width: ${width:,.2f}</div>
     </div>""", unsafe_allow_html=True)
 
-# ── Save prediction (Part C) ──
+# Save prediction (Part C) 
 history = load_history()
 existing = {h["target_hour"] for h in history}
 if pred["target_hour"] not in existing:
@@ -183,7 +181,7 @@ if history:
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f)
 
-# ── Chart ──
+# Chart 
 st.subheader("Last 50 bars + prediction")
 last50 = df.tail(50).copy()
 next_time = last50["open_time"].iloc[-1] + pd.Timedelta(hours=1)
@@ -228,7 +226,7 @@ fig.update_layout(
 )
 st.plotly_chart(fig, width="stretch")
 
-# ── Prediction history (Part C) ──
+# Prediction history (Part C) 
 resolved = [h for h in history if h.get("actual") is not None]
 pending = [h for h in history if h.get("actual") is None]
 
@@ -261,7 +259,7 @@ if resolved or pending:
         else:
             st.caption("No pending predictions.")
 
-# ── Footer ──
+# Footer 
 st.divider()
 st.caption(f"Last updated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · "
            f"Source: Binance BTCUSDT 1H")

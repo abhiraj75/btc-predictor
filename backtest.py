@@ -12,10 +12,7 @@ import pandas as pd
 from tqdm import tqdm
 from model import DEFAULT_VOLATILITY_SCALE, fetch_btc_klines, compute_features, simulate_mc
 
-
-# ────────────────────────────────────────────────────────────────
 # Evaluation (from challenge spec)
-# ────────────────────────────────────────────────────────────────
 
 def evaluate(predictions: list[dict], alpha: float = 0.05):
     """
@@ -45,10 +42,7 @@ def evaluate(predictions: list[dict], alpha: float = 0.05):
         "mean_winkler_95": mean_winkler,
     }
 
-
-# ────────────────────────────────────────────────────────────────
 # Backtest loop
-# ────────────────────────────────────────────────────────────────
 
 def run_backtest(
     train_window: int = 500,
