@@ -61,7 +61,7 @@ The dashboard shows:
 - Candlestick chart of last 50 bars with shaded prediction band
 - Prediction history with hit/miss tracking
 
-Persistence uses local JSON storage through isolated `load_history()` / `save_prediction()` functions. On hosted platforms, local files may reset after app sleep or redeploy. The storage code is intentionally small so it can be swapped to an external backend (Supabase, S3, GitHub Gist, etc.).
+Persistence saves each generated dashboard prediction through isolated `load_history()` / `save_prediction()` functions backed by local JSON storage. On hosted platforms, local files may reset after app sleep or redeploy. The storage code is intentionally small so it can be swapped to an external backend (Supabase, S3, GitHub Gist, etc.).
 
 ## Data Source
 

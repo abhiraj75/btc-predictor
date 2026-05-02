@@ -97,8 +97,7 @@ def load_backtest_metrics():
         "n": len(preds),
     }
 
-# Live prediction 
-@st.cache_data(ttl=30)
+# Live prediction
 def get_prediction():
     df = fetch_btc_klines(limit=500)
     prices = pd.Series(df["close"].values, dtype=float)
@@ -167,15 +166,13 @@ with col_pred:
 
 # Save prediction (Part C) 
 history = load_history()
-existing = {h["target_hour"] for h in history}
-if pred["target_hour"] not in existing:
-    history = save_prediction({
-        "timestamp": pred["timestamp"],
-        "target_hour": pred["target_hour"],
-        "current_price": price,
-        "lower": lo, "upper": hi,
-        "actual": None, "hit": None,
-    }, history)
+history = save_prediction({
+    "timestamp": pred["timestamp"],
+    "target_hour": pred["target_hour"],
+    "current_price": price,
+    "lower": lo, "upper": hi,
+    "actual": None, "hit": None,
+}, history)
 history = update_actuals(history, df)
 if history:
     with open(HISTORY_FILE, "w") as f:
@@ -238,8 +235,10 @@ if resolved or pending:
         if resolved:
             rows = []
             for h in reversed(resolved[-30:]):
+                ts = h.get("timestamp", "")[:19].replace("T", " ")
                 rows.append({
-                    "Hour": h["target_hour"],
+                    "Predicted At": ts,
+                    "Target Hour": h["target_hour"],
                     "Lower": f"${h['lower']:,.2f}",
                     "Upper": f"${h['upper']:,.2f}",
                     "Actual": f"${h['actual']:,.2f}",
@@ -251,7 +250,8 @@ if resolved or pending:
 
     with tab2:
         if pending:
-            rows = [{"Hour": h["target_hour"],
+            rows = [{"Predicted At": h.get("timestamp", "")[:19].replace("T", " "),
+                     "Target Hour": h["target_hour"],
                      "Lower": f"${h['lower']:,.2f}",
                      "Upper": f"${h['upper']:,.2f}"}
                     for h in reversed(pending)]
