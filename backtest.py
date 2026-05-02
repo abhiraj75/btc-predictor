@@ -12,7 +12,7 @@ import pandas as pd
 from tqdm import tqdm
 from model import DEFAULT_VOLATILITY_SCALE, fetch_btc_klines, compute_features, simulate_mc
 
-# Evaluation (from challenge spec)
+# Evaluation
 
 def evaluate(predictions: list[dict], alpha: float = 0.05):
     """
