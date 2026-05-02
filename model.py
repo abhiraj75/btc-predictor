@@ -19,15 +19,19 @@ from datetime import datetime, timezone
 # ────────────────────────────────────────────────────────────────
 
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
+DEFAULT_VOLATILITY_SCALE = 0.96
 
 
 def fetch_btc_klines(limit: int = 500, end_time_ms: int | None = None) -> pd.DataFrame:
     """
-    Fetch BTCUSDT 1-hour klines from Binance public API.
+    Fetch closed BTCUSDT 1-hour klines from Binance public API.
     Returns a DataFrame with columns: open_time, open, high, low, close, volume.
     """
     all_data = []
-    remaining = limit
+    requested_limit = limit
+    # Binance may include the currently forming candle. Fetch a small buffer so
+    # filtering it out still leaves the requested number of closed bars.
+    remaining = limit + 2
     current_end = end_time_ms
 
     while remaining > 0:
@@ -60,6 +64,8 @@ def fetch_btc_klines(limit: int = 500, end_time_ms: int | None = None) -> pd.Dat
     df["open_time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
     df["close_time"] = pd.to_datetime(df["close_time"], unit="ms", utc=True)
     df = df.drop_duplicates(subset="open_time").sort_values("open_time").reset_index(drop=True)
+    df = df[df["close_time"] <= pd.Timestamp.now(tz="UTC")]
+    df = df.tail(requested_limit).reset_index(drop=True)
     return df
 
 
@@ -167,7 +173,8 @@ def simulate_mc(
     H: pd.Series, M: pd.Series,
     bar_sigma2: float, redundancy: pd.Series,
     info_filter: pd.Series, nu: float, base_params: dict,
-    n_sims: int = 10_000, n_steps: int = 1
+    n_sims: int = 10_000, n_steps: int = 1,
+    volatility_scale: float = DEFAULT_VOLATILITY_SCALE,
 ) -> np.ndarray:
     """
     Vectorised Monte Carlo simulation for 1-step ahead prediction.
@@ -178,6 +185,7 @@ def simulate_mc(
         sigma_fig, H, M, base_params, bar_sigma2,
         redundancy, info_filter
     )
+    sigma2 *= volatility_scale ** 2
 
     dt = 1.0
     # Vectorised: draw all shocks at once
@@ -192,7 +200,8 @@ def simulate_mc(
 # ────────────────────────────────────────────────────────────────
 
 def predict_range(
-    prices: pd.Series, n_sims: int = 10_000, alpha: float = 0.05
+    prices: pd.Series, n_sims: int = 10_000, alpha: float = 0.05,
+    volatility_scale: float = DEFAULT_VOLATILITY_SCALE,
 ) -> dict:
     """
     Given a price series (closes), predict the 95% range for the next bar.
@@ -215,6 +224,7 @@ def predict_range(
         base_params=feats["base_params"],
         n_sims=n_sims,
         n_steps=1,
+        volatility_scale=volatility_scale,
     )
 
     lo = float(alpha / 2 * 100)

@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from model import fetch_btc_klines, compute_features, simulate_mc
+from model import DEFAULT_VOLATILITY_SCALE, fetch_btc_klines, compute_features, simulate_mc
 
 
 # ────────────────────────────────────────────────────────────────
@@ -55,6 +55,8 @@ def run_backtest(
     test_bars: int = 720,
     n_sims: int = 10_000,
     output_file: str = "backtest_results.jsonl",
+    volatility_scale: float = DEFAULT_VOLATILITY_SCALE,
+    random_seed: int | None = 20260502,
 ):
     """
     Rolling backtest: for each of the last `test_bars` hours,
@@ -107,6 +109,9 @@ def run_backtest(
             })
             continue
 
+        if random_seed is not None:
+            np.random.seed(random_seed + step)
+
         terminals = simulate_mc(
             S0=train_prices.iloc[-1],
             mu=feats["mu"],
@@ -120,6 +125,7 @@ def run_backtest(
             base_params=feats["base_params"],
             n_sims=n_sims,
             n_steps=1,
+            volatility_scale=volatility_scale,
         )
 
         lower, upper = np.percentile(terminals, [2.5, 97.5])

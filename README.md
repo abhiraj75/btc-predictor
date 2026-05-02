@@ -39,6 +39,17 @@ Run `python backtest.py` to generate `backtest_results.jsonl` and print:
 - **Mean Width** — average prediction range width (narrower = better)
 - **Winkler Score** — combined accuracy + tightness metric (lower = better)
 
+Current saved `backtest_results.jsonl` metrics:
+
+| Metric | Value |
+|--------|-------|
+| `coverage_95` | `0.9513888889` |
+| `mean_width` | `1188.3203891551` |
+| `mean_winkler_95` | `1680.9890754666` |
+| Predictions | `720` |
+| Backtest window | `2026-04-02 17:00 UTC` to `2026-05-02 16:00 UTC` |
+| Volatility scale | `0.96` |
+
 ## Dashboard (Part B)
 
 The Streamlit dashboard shows:
@@ -46,6 +57,8 @@ The Streamlit dashboard shows:
 - Current BTC price + 95% prediction range for the next hour
 - Candlestick chart of last 50 bars with shaded prediction band
 - Prediction history with hit/miss tracking (Part C)
+
+Deployment URL: add the public Streamlit/HuggingFace/etc. URL here before submitting the form.
 
 ## Data Source
 
