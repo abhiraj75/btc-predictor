@@ -1,16 +1,9 @@
 """
 app.py — Streamlit Dashboard for BTC Next-Hour Prediction (Parts B + C)
-
-Displays:
-- Backtest metrics (coverage, width, Winkler)
-- Current BTC price + predicted 95% range for next hour
-- Chart of last 50 bars with prediction band
-- Prediction history (Part C persistence)
 """
 
 import json
 import os
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,152 +14,36 @@ import streamlit as st
 
 from model import fetch_btc_klines, predict_range
 
-# ────────────────────────────────────────────────────────────────
-# PAGE CONFIG
-# ────────────────────────────────────────────────────────────────
+# ── Page config ──
+st.set_page_config(page_title="BTC Predictor", page_icon="₿", layout="wide")
 
-st.set_page_config(
-    page_title="BTC Next-Hour Predictor",
-    page_icon="₿",
-    layout="wide",
-)
-
-# ────────────────────────────────────────────────────────────────
-# CUSTOM CSS
-# ────────────────────────────────────────────────────────────────
-
+# ── Minimal CSS — just enough to not look like default Streamlit ──
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-    html, body, [class*="st-"] {
-        font-family: 'Inter', sans-serif;
-    }
-
-    .main .block-container {
-        padding-top: 2rem;
-        max-width: 1200px;
-    }
-
-    /* Metric cards */
-    .metric-card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 16px;
-        padding: 1.5rem;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    }
-    .metric-label {
-        color: #8892b0;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        margin-bottom: 0.5rem;
-    }
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #64ffda, #00bfa5);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .metric-value.warn {
-        background: linear-gradient(135deg, #ff6b6b, #ffa502);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    /* Price display */
-    .price-display {
-        background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
-        border: 1px solid rgba(100, 255, 218, 0.15);
-        border-radius: 20px;
-        padding: 2rem;
-        text-align: center;
-        margin: 1rem 0;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-    }
-    .price-label {
-        color: #8892b0;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    }
-    .price-value {
-        font-size: 3rem;
-        font-weight: 800;
-        color: #ccd6f6;
-        margin: 0.3rem 0;
-    }
-    .range-text {
-        font-size: 1.1rem;
-        color: #64ffda;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-    .range-width {
-        font-size: 0.85rem;
-        color: #8892b0;
-        margin-top: 0.3rem;
-    }
-
-    /* Header */
-    .header-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #f7931a, #ffcf40);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0;
-        line-height: 1.2;
-    }
-    .header-subtitle {
-        color: #8892b0;
-        font-size: 0.95rem;
-        margin-top: 0.3rem;
-    }
-
-    /* History table */
-    .history-hit {
-        color: #64ffda;
-        font-weight: 700;
-    }
-    .history-miss {
-        color: #ff6b6b;
-        font-weight: 700;
-    }
-
-    div[data-testid="stMetric"] {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px;
-        padding: 1rem;
-    }
-
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1a1a2e;
+    .block-container { padding-top: 1.5rem; max-width: 1100px; }
+    .stat-box {
+        border: 1px solid #333;
         border-radius: 8px;
-        color: #8892b0;
-        border: 1px solid rgba(255,255,255,0.06);
+        padding: 1rem 1.2rem;
+        background: #111;
+    }
+    .stat-label { color: #999; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: #e0e0e0; }
+    .stat-value.green { color: #4ade80; }
+    .prediction-box {
+        border: 1px solid #2a2a3a;
+        border-radius: 10px;
+        padding: 1.2rem 1.5rem;
+        background: #0d0d1a;
+        margin: 1rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-
-# ────────────────────────────────────────────────────────────────
-# PERSISTENCE (Part C)
-# ────────────────────────────────────────────────────────────────
-
+# ── Persistence (Part C) ──
 HISTORY_FILE = "predictions_history.json"
 
-
-def load_history() -> list[dict]:
+def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE) as f:
@@ -175,310 +52,216 @@ def load_history() -> list[dict]:
             return []
     return []
 
-
-def save_prediction(pred: dict, history: list[dict]):
-    """Append a new prediction and save to disk."""
+def save_prediction(pred, history):
     history.append(pred)
-    # Keep last 500 predictions
     history = history[-500:]
     with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=2)
+        json.dump(history, f)
     return history
 
-
-def update_history_actuals(history: list[dict], df: pd.DataFrame):
-    """Fill in actual prices for past predictions where we now know the outcome."""
+def update_actuals(history, df):
     close_map = {}
     for _, row in df.iterrows():
-        # key: hour timestamp
         ts = row["close_time"].strftime("%Y-%m-%d %H:00")
         close_map[ts] = float(row["close"])
-
     for h in history:
         if h.get("actual") is None and h.get("target_hour") in close_map:
             h["actual"] = close_map[h["target_hour"]]
             h["hit"] = h["lower"] <= h["actual"] <= h["upper"]
-
     return history
 
-
-# ────────────────────────────────────────────────────────────────
-# BACKTEST METRICS
-# ────────────────────────────────────────────────────────────────
-
+# ── Load backtest metrics ──
 @st.cache_data(ttl=3600)
 def load_backtest_metrics():
-    """Load pre-computed backtest metrics from JSONL file."""
     path = Path("backtest_results.jsonl")
     if not path.exists():
         return None
-
-    preds = []
-    with open(path) as f:
-        for line in f:
-            preds.append(json.loads(line.strip()))
-
+    preds = [json.loads(l) for l in open(path)]
     if not preds:
         return None
-
     alpha = 0.05
     hits = [p["lower"] <= p["actual"] <= p["upper"] for p in preds]
-    coverage = float(np.mean(hits))
     widths = [p["upper"] - p["lower"] for p in preds]
-    mean_width = float(np.mean(widths))
-
-    winkler_scores = []
+    winkler = []
     for p in preds:
         w = p["upper"] - p["lower"]
         if p["actual"] < p["lower"]:
-            w += (2 / alpha) * (p["lower"] - p["actual"])
+            w += (2/alpha) * (p["lower"] - p["actual"])
         elif p["actual"] > p["upper"]:
-            w += (2 / alpha) * (p["actual"] - p["upper"])
-        winkler_scores.append(w)
-    mean_winkler = float(np.mean(winkler_scores))
-
+            w += (2/alpha) * (p["actual"] - p["upper"])
+        winkler.append(w)
     return {
-        "coverage_95": coverage,
-        "mean_width": mean_width,
-        "mean_winkler_95": mean_winkler,
-        "n_predictions": len(preds),
+        "coverage": float(np.mean(hits)),
+        "width": float(np.mean(widths)),
+        "winkler": float(np.mean(winkler)),
+        "n": len(preds),
     }
 
-
-# ────────────────────────────────────────────────────────────────
-# DATA + PREDICTION
-# ────────────────────────────────────────────────────────────────
-
+# ── Live prediction ──
 @st.cache_data(ttl=300)
-def get_live_data_and_prediction():
-    """Fetch latest 500 bars, run model, return prediction + data."""
+def get_prediction():
     df = fetch_btc_klines(limit=500)
     prices = pd.Series(df["close"].values, dtype=float)
     pred = predict_range(prices, n_sims=10_000, alpha=0.05)
-
-    # Target hour = close_time of the last bar + 1 hour
-    last_close_time = df["close_time"].iloc[-1]
-    target_hour = (last_close_time + pd.Timedelta(hours=1)).strftime("%Y-%m-%d %H:00")
-
+    last_close = df["close_time"].iloc[-1]
+    pred["target_hour"] = (last_close + pd.Timedelta(hours=1)).strftime("%Y-%m-%d %H:00")
     pred["timestamp"] = datetime.now(timezone.utc).isoformat()
-    pred["target_hour"] = target_hour
-
     return df, pred
 
+# ────────────────────────────────────────────────
+# MAIN
+# ────────────────────────────────────────────────
 
-# ────────────────────────────────────────────────────────────────
-# MAIN UI
-# ────────────────────────────────────────────────────────────────
+st.title("₿ BTC Next-Hour Predictor")
+st.caption("GBM Monte Carlo · FIGARCH volatility · Student-t fat tails · 10K simulations")
 
-def main():
-    # Header
-    st.markdown("""
-        <div style="text-align:center; margin-bottom:1.5rem;">
-            <div class="header-title">₿ BTC Next-Hour Predictor</div>
-            <div class="header-subtitle">
-                Cyber GBM Monte Carlo · FIGARCH Volatility · Student-t Fat Tails
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+# ── Backtest metrics ──
+metrics = load_backtest_metrics()
+if metrics:
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        cov = metrics["coverage"]
+        color = "green" if abs(cov - 0.95) < 0.03 else ""
+        st.markdown(f"""<div class="stat-box">
+            <div class="stat-label">Coverage (30d)</div>
+            <div class="stat-value {color}">{cov:.1%}</div>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="stat-box">
+            <div class="stat-label">Avg Width</div>
+            <div class="stat-value">${metrics['width']:,.0f}</div>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="stat-box">
+            <div class="stat-label">Winkler Score</div>
+            <div class="stat-value">${metrics['winkler']:,.0f}</div>
+        </div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""<div class="stat-box">
+            <div class="stat-label">Predictions</div>
+            <div class="stat-value">{metrics['n']}</div>
+        </div>""", unsafe_allow_html=True)
 
-    # ── Backtest Metrics Row ──
-    metrics = load_backtest_metrics()
-    if metrics:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            cov = metrics["coverage_95"]
-            cov_class = "" if abs(cov - 0.95) < 0.03 else " warn"
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Coverage (30-day backtest)</div>
-                    <div class="metric-value{cov_class}">{cov:.2%}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Avg Range Width</div>
-                    <div class="metric-value">${metrics['mean_width']:,.0f}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Winkler Score</div>
-                    <div class="metric-value">${metrics['mean_winkler_95']:,.0f}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
 
-    # ── Live prediction ──
-    with st.spinner("⏳ Fetching live data & running 10,000 Monte Carlo simulations ..."):
-        df, pred = get_live_data_and_prediction()
+# ── Live prediction ──
+with st.spinner("Fetching live data & running simulations..."):
+    df, pred = get_prediction()
 
-    current = pred["current_price"]
-    lower = pred["lower"]
-    upper = pred["upper"]
-    width = upper - lower
+price = pred["current_price"]
+lo, hi = pred["lower"], pred["upper"]
+width = hi - lo
 
-    st.markdown(f"""
-        <div class="price-display">
-            <div class="price-label">Current BTC Price</div>
-            <div class="price-value">${current:,.2f}</div>
-            <div class="range-text">
-                95% Prediction: ${lower:,.2f} — ${upper:,.2f}
-            </div>
-            <div class="range-width">
-                Width: ${width:,.2f} · Target hour: {pred['target_hour']} UTC
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+col_price, col_pred = st.columns([1, 1])
 
-    # ── Save prediction (Part C) ──
-    history = load_history()
-    # Only save if we haven't saved this target hour already
-    existing_hours = {h["target_hour"] for h in history}
-    if pred["target_hour"] not in existing_hours:
-        history = save_prediction(
-            {
-                "timestamp": pred["timestamp"],
-                "target_hour": pred["target_hour"],
-                "current_price": current,
-                "lower": lower,
-                "upper": upper,
-                "actual": None,
-                "hit": None,
-            },
-            history,
-        )
+with col_price:
+    st.markdown(f"""<div class="prediction-box">
+        <div class="stat-label">Current BTC Price</div>
+        <div class="stat-value" style="font-size:2.2rem;">${price:,.2f}</div>
+    </div>""", unsafe_allow_html=True)
 
-    # Update actuals for past predictions
-    history = update_history_actuals(history, df)
-    # Re-save with actuals filled in
-    if history:
-        with open(HISTORY_FILE, "w") as f:
-            json.dump(history, f, indent=2)
+with col_pred:
+    st.markdown(f"""<div class="prediction-box">
+        <div class="stat-label">95% Prediction → {pred['target_hour']} UTC</div>
+        <div class="stat-value green" style="font-size:1.8rem;">${lo:,.2f} — ${hi:,.2f}</div>
+        <div style="color:#666; font-size:0.8rem; margin-top:4px;">Width: ${width:,.2f}</div>
+    </div>""", unsafe_allow_html=True)
 
-    # ── Chart ──
-    st.markdown("### 📈 Last 50 Bars + Prediction Band")
-    last50 = df.tail(50).copy()
+# ── Save prediction (Part C) ──
+history = load_history()
+existing = {h["target_hour"] for h in history}
+if pred["target_hour"] not in existing:
+    history = save_prediction({
+        "timestamp": pred["timestamp"],
+        "target_hour": pred["target_hour"],
+        "current_price": price,
+        "lower": lo, "upper": hi,
+        "actual": None, "hit": None,
+    }, history)
+history = update_actuals(history, df)
+if history:
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f)
 
-    fig = go.Figure()
+# ── Chart ──
+st.subheader("Last 50 bars + prediction")
+last50 = df.tail(50).copy()
+next_time = last50["open_time"].iloc[-1] + pd.Timedelta(hours=1)
 
-    # Candlestick
-    fig.add_trace(go.Candlestick(
-        x=last50["open_time"],
-        open=last50["open"],
-        high=last50["high"],
-        low=last50["low"],
-        close=last50["close"],
-        name="BTCUSDT 1H",
-        increasing_line_color="#26a69a",
-        decreasing_line_color="#ef5350",
-    ))
+fig = go.Figure()
+fig.add_trace(go.Candlestick(
+    x=last50["open_time"],
+    open=last50["open"], high=last50["high"],
+    low=last50["low"], close=last50["close"],
+    name="BTCUSDT 1H",
+    increasing_line_color="#26a69a",
+    decreasing_line_color="#ef5350",
+))
 
-    # Prediction band (next hour)
-    next_time = last50["open_time"].iloc[-1] + pd.Timedelta(hours=1)
+# Prediction band
+fig.add_shape(type="rect",
+    x0=last50["open_time"].iloc[-1], x1=next_time,
+    y0=lo, y1=hi,
+    fillcolor="rgba(74, 222, 128, 0.12)",
+    line=dict(color="rgba(74, 222, 128, 0.4)", width=1.5, dash="dot"),
+)
+fig.add_trace(go.Scatter(
+    x=[next_time], y=[pred["mean"]],
+    mode="markers", marker=dict(color="#4ade80", size=8, symbol="diamond"),
+    name="Predicted mean",
+))
+fig.add_annotation(x=next_time, y=hi, text=f"${hi:,.0f}", showarrow=False,
+                   font=dict(color="#4ade80", size=10), yshift=12)
+fig.add_annotation(x=next_time, y=lo, text=f"${lo:,.0f}", showarrow=False,
+                   font=dict(color="#4ade80", size=10), yshift=-12)
 
-    # Shaded prediction rectangle
-    fig.add_shape(
-        type="rect",
-        x0=last50["open_time"].iloc[-1],
-        x1=next_time,
-        y0=lower,
-        y1=upper,
-        fillcolor="rgba(100, 255, 218, 0.15)",
-        line=dict(color="rgba(100, 255, 218, 0.5)", width=2, dash="dot"),
-    )
+fig.update_layout(
+    template="plotly_dark",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    height=450,
+    margin=dict(l=40, r=20, t=20, b=40),
+    xaxis_rangeslider_visible=False,
+    legend=dict(orientation="h", y=1.02, x=0),
+    xaxis=dict(gridcolor="rgba(255,255,255,0.03)"),
+    yaxis=dict(gridcolor="rgba(255,255,255,0.03)", tickprefix="$", tickformat=",.0f"),
+)
+st.plotly_chart(fig, width="stretch")
 
-    # Prediction midpoint marker
-    fig.add_trace(go.Scatter(
-        x=[next_time],
-        y=[pred["mean"]],
-        mode="markers",
-        marker=dict(color="#64ffda", size=12, symbol="diamond"),
-        name="Predicted Mean",
-    ))
+# ── Prediction history (Part C) ──
+resolved = [h for h in history if h.get("actual") is not None]
+pending = [h for h in history if h.get("actual") is None]
 
-    # Annotation
-    fig.add_annotation(
-        x=next_time,
-        y=upper,
-        text=f"${upper:,.0f}",
-        showarrow=False,
-        font=dict(color="#64ffda", size=11),
-        yshift=15,
-    )
-    fig.add_annotation(
-        x=next_time,
-        y=lower,
-        text=f"${lower:,.0f}",
-        showarrow=False,
-        font=dict(color="#64ffda", size=11),
-        yshift=-15,
-    )
+if resolved or pending:
+    st.subheader("Prediction history")
+    tab1, tab2 = st.tabs([f"Resolved ({len(resolved)})", f"Pending ({len(pending)})"])
 
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0a0a1a",
-        plot_bgcolor="#0a0a1a",
-        height=500,
-        margin=dict(l=50, r=30, t=30, b=50),
-        xaxis_rangeslider_visible=False,
-        legend=dict(orientation="h", y=1.05),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.04)", tickformat="$,.0f"),
-    )
-    st.plotly_chart(fig, width="stretch")
+    with tab1:
+        if resolved:
+            rows = []
+            for h in reversed(resolved[-30:]):
+                rows.append({
+                    "Hour": h["target_hour"],
+                    "Lower": f"${h['lower']:,.2f}",
+                    "Upper": f"${h['upper']:,.2f}",
+                    "Actual": f"${h['actual']:,.2f}",
+                    "": "✓" if h.get("hit") else "✗",
+                })
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+        else:
+            st.info("No resolved predictions yet — check back after the next hourly close.")
 
-    # ── Prediction History (Part C) ──
-    if history:
-        st.markdown("### 📜 Prediction History")
+    with tab2:
+        if pending:
+            rows = [{"Hour": h["target_hour"],
+                     "Lower": f"${h['lower']:,.2f}",
+                     "Upper": f"${h['upper']:,.2f}"}
+                    for h in reversed(pending)]
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+        else:
+            st.caption("No pending predictions.")
 
-        hist_with_actuals = [h for h in history if h.get("actual") is not None]
-        hist_pending = [h for h in history if h.get("actual") is None]
-
-        tab1, tab2 = st.tabs(["✅ Resolved", "⏳ Pending"])
-
-        with tab1:
-            if hist_with_actuals:
-                rows = []
-                for h in reversed(hist_with_actuals[-50:]):
-                    hit_str = "✅ Hit" if h.get("hit") else "❌ Miss"
-                    rows.append({
-                        "Target Hour": h["target_hour"],
-                        "Price": f"${h['current_price']:,.2f}",
-                        "Lower": f"${h['lower']:,.2f}",
-                        "Upper": f"${h['upper']:,.2f}",
-                        "Actual": f"${h['actual']:,.2f}",
-                        "Result": hit_str,
-                    })
-                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-            else:
-                st.info("No resolved predictions yet. Check back after the next hour closes!")
-
-        with tab2:
-            if hist_pending:
-                rows = []
-                for h in reversed(hist_pending):
-                    rows.append({
-                        "Target Hour": h["target_hour"],
-                        "Current Price": f"${h['current_price']:,.2f}",
-                        "Lower": f"${h['lower']:,.2f}",
-                        "Upper": f"${h['upper']:,.2f}",
-                    })
-                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-            else:
-                st.info("No pending predictions.")
-
-    # ── Footer ──
-    st.markdown("---")
-    st.markdown(
-        "<div style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-        "AlphaI × Polaris Challenge · Cyber GBM with FIGARCH volatility & Student-t tails · "
-        f"Last updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-if __name__ == "__main__":
-    main()
+# ── Footer ──
+st.divider()
+st.caption(f"Last updated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · "
+           f"Source: Binance BTCUSDT 1H · AlphaI × Polaris Challenge")
