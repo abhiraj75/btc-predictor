@@ -264,4 +264,4 @@ if resolved or pending:
 # ── Footer ──
 st.divider()
 st.caption(f"Last updated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · "
-           f"Source: Binance BTCUSDT 1H · AlphaI × Polaris Challenge")
+           f"Source: Binance BTCUSDT 1H")
