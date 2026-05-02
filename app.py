@@ -427,7 +427,7 @@ def main():
         xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
         yaxis=dict(gridcolor="rgba(255,255,255,0.04)", tickformat="$,.0f"),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # ── Prediction History (Part C) ──
     if history:
@@ -451,7 +451,7 @@ def main():
                         "Actual": f"${h['actual']:,.2f}",
                         "Result": hit_str,
                     })
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
             else:
                 st.info("No resolved predictions yet. Check back after the next hour closes!")
 
@@ -465,7 +465,7 @@ def main():
                         "Lower": f"${h['lower']:,.2f}",
                         "Upper": f"${h['upper']:,.2f}",
                     })
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
             else:
                 st.info("No pending predictions.")
 
